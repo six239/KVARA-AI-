@@ -1,4 +1,4 @@
-name = "kvara-ai"
+name = "kvara-ai-3"
 main = "worker/index.ts"
 compatibility_date = "2025-01-15"
 compatibility_flags = ["nodejs_compat"]
