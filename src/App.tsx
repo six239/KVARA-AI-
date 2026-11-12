@@ -3,7 +3,7 @@ import {createRoot} from "react-dom/client";
 import {MessageCircle,Image as ImageIcon,Video,Files,Search,LogOut,Plus,Send,Trash2,Menu, X,Loader2,Volume2} from "lucide-react";
 import "./styles.css";
 type Chat={id:string,title:string}; type Msg={id?:string,role:"user"|"assistant",content:string};
-const api=async(path:string,opts:RequestInit={})=>{const r=await fetch(path,{...opts,credentials:"include",headers:{"Content-Type":"application/json",...(opts.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||"Request failed");return d;};
+const api=async(path:string,opts:RequestInit={})=>{const r=await fetch(path,{...opts,credentials:"include",headers:{"Content-Type":"application/json",...(opts.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok){const details=[d.error||"Request failed",d.stage?`Stage: ${d.stage}`:"",d.diagnostic?`Details: ${d.diagnostic}`:""].filter(Boolean).join("\\n");throw new Error(details);}return d;};
 function App(){
  const [user,setUser]=useState<any>(null),[email,setEmail]=useState(""),[password,setPassword]=useState(""),[register,setRegister]=useState(false);
  const [chats,setChats]=useState<Chat[]>([]),[chatId,setChatId]=useState(""),[messages,setMessages]=useState<Msg[]>([]),[prompt,setPrompt]=useState(""),[busy,setBusy]=useState(false),[tab,setTab]=useState("chat"),[sidebar,setSidebar]=useState(true),[error,setError]=useState("");
