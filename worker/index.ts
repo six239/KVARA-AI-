@@ -34,12 +34,31 @@ async function route(req: Request, env: Env): Promise<Response> {
   if (path === "/api/auth/register" && method==="POST") {
     const b=await body(req), email=String(b.email||"").trim().toLowerCase(), password=String(b.password||"");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length<10) return json({error:"Use a valid email and a password with at least 10 characters."},400);
-    const salt=crypto.randomUUID(), hash=await passwordHash(password,salt), userId=id();
-    try { await env.DB.prepare("INSERT INTO users(id,email,password_hash) VALUES(?,?,?)").bind(userId,email,salt+":"+hash).run(); }
-    catch { return json({error:"An account with this email may already exist."},409); }
-    const token=crypto.randomUUID()+crypto.randomUUID(), expires=new Date(Date.now()+30*864e5).toISOString();
-    await env.DB.prepare("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(?,?,?)").bind(await digest(token),userId,expires).run();
-    return new Response(JSON.stringify({user:{id:userId,email}}),{headers:{"content-type":"application/json","set-cookie":sessionCookie(token,30*86400)}});
+
+    let stage = "password_hash";
+    try {
+      const salt=crypto.randomUUID();
+      const hash=await passwordHash(password,salt);
+      const userId=id();
+      const token=crypto.randomUUID()+crypto.randomUUID();
+      const tokenHash=await digest(token);
+      const expires=new Date(Date.now()+30*864e5).toISOString();
+
+      stage = "database_insert";
+      await env.DB.batch([
+        env.DB.prepare("INSERT INTO users(id,email,password_hash) VALUES(?,?,?)").bind(userId,email,salt+":"+hash),
+        env.DB.prepare("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(?,?,?)").bind(tokenHash,userId,expires)
+      ]);
+
+      return new Response(JSON.stringify({user:{id:userId,email}}),{headers:{"content-type":"application/json","cache-control":"no-store","set-cookie":sessionCookie(token,30*86400)}});
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("KVARA registration failed", { stage, error: message });
+      if (message.includes("UNIQUE constraint failed") && message.toLowerCase().includes("users.email")) {
+        return json({error:"An account with this email already exists."},409);
+      }
+      return json({error:"Registration failed. Please try again later.",stage},500);
+    }
   }
   if (path === "/api/auth/login" && method==="POST") {
     const b=await body(req), email=String(b.email||"").trim().toLowerCase(), password=String(b.password||"");
@@ -126,12 +145,19 @@ async function route(req: Request, env: Env): Promise<Response> {
 }
 export default { async fetch(req:Request,env:Env):Promise<Response> {
   const url=new URL(req.url);
+  if (url.pathname.startsWith("/api/")) console.log("KVARA request", req.method, url.pathname);
   if(url.pathname.startsWith("/api/")) {
     const requestOrigin=req.headers.get("Origin");
     if(requestOrigin && requestOrigin !== url.origin) return json({error:"Cross-origin requests are not allowed."},403);
     const cors=new Headers({"Access-Control-Allow-Origin":url.origin,"Access-Control-Allow-Credentials":"true","Access-Control-Allow-Headers":"Content-Type","Access-Control-Allow-Methods":"GET,POST,PATCH,DELETE,OPTIONS","Vary":"Origin"});
     if(req.method==="OPTIONS") return new Response(null,{headers:cors});
-    const response=await route(req,env);
+    let response: Response;
+    try {
+      response=await route(req,env);
+    } catch (err) {
+      console.error("KVARA unhandled API error", req.method, url.pathname, err instanceof Error ? err.stack || err.message : String(err));
+      response=json({error:"Internal server error."},500);
+    }
     const headers=new Headers(response.headers); cors.forEach((v,k)=>headers.set(k,v));
     return new Response(response.body,{status:response.status,headers});
   }
