@@ -53,7 +53,7 @@ async function route(req: Request, env: Env): Promise<Response> {
   }
   if (path === "/api/auth/logout" && method==="POST") {
     const token=cookie(req,"kvara_session"); if(token) await env.DB.prepare("DELETE FROM sessions WHERE token_hash=?").bind(await digest(token)).run();
-    return new Response("{}",{headers:{"content-type":"application/json","set-cookie:":"", "Set-Cookie":sessionCookie("",0)}});
+    return new Response("{}",{headers:{"content-type":"application/json","Set-Cookie":sessionCookie("",0)}});
   }
   if (path === "/api/auth/me") { const user=await auth(req,env); return json({user}); }
   const user=await auth(req,env);
@@ -127,7 +127,9 @@ async function route(req: Request, env: Env): Promise<Response> {
 export default { async fetch(req:Request,env:Env):Promise<Response> {
   const url=new URL(req.url);
   if(url.pathname.startsWith("/api/")) {
-    const cors=new Headers({"Access-Control-Allow-Origin":url.origin,"Access-Control-Allow-Credentials":"true","Access-Control-Allow-Headers":"Content-Type","Access-Control-Allow-Methods":"GET,POST,PATCH,DELETE,OPTIONS"});
+    const requestOrigin=req.headers.get("Origin");
+    if(requestOrigin && requestOrigin !== url.origin) return json({error:"Cross-origin requests are not allowed."},403);
+    const cors=new Headers({"Access-Control-Allow-Origin":url.origin,"Access-Control-Allow-Credentials":"true","Access-Control-Allow-Headers":"Content-Type","Access-Control-Allow-Methods":"GET,POST,PATCH,DELETE,OPTIONS","Vary":"Origin"});
     if(req.method==="OPTIONS") return new Response(null,{headers:cors});
     const response=await route(req,env);
     const headers=new Headers(response.headers); cors.forEach((v,k)=>headers.set(k,v));
