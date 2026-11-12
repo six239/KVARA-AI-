@@ -57,7 +57,7 @@ async function route(req: Request, env: Env): Promise<Response> {
       if (message.includes("UNIQUE constraint failed") && message.toLowerCase().includes("users.email")) {
         return json({error:"An account with this email already exists."},409);
       }
-      return json({error:"Registration failed. Please try again later.",stage},500);
+      return json({error:"Registration failed. Please try again later.",stage,diagnostic:message.slice(0,240)},500);
     }
   }
   if (path === "/api/auth/login" && method==="POST") {
