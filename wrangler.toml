@@ -9,7 +9,7 @@ binding = "AI"
 [[d1_databases]]
 binding = "DB"
 database_name = "kvara-ai-db"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "fc36ec3a-fef4-4930-beac-3a1daedf90c8"
 migrations_dir = "migrations"
 
 [[r2_buckets]]
