@@ -7,7 +7,8 @@ const api=async(path:string,opts:RequestInit={})=>{const r=await fetch(path,{...
 function App(){
  const [user,setUser]=useState<any>(null),[email,setEmail]=useState(""),[password,setPassword]=useState(""),[register,setRegister]=useState(false);
  const [chats,setChats]=useState<Chat[]>([]),[chatId,setChatId]=useState(""),[messages,setMessages]=useState<Msg[]>([]),[prompt,setPrompt]=useState(""),[busy,setBusy]=useState(false),[tab,setTab]=useState("chat"),[sidebar,setSidebar]=useState(true),[error,setError]=useState("");
- const [studioPrompt,setStudioPrompt]=useState(""),[output,setOutput]=useState(""),[file,setFile]=useState<File|null>(null);\n const [scriptPrompt,setScriptPrompt]=useState(""),[scriptCode,setScriptCode]=useState(""),[scriptBusy,setScriptBusy]=useState(false),[scriptError,setScriptError]=useState("");
+ const [studioPrompt,setStudioPrompt]=useState(""),[output,setOutput]=useState(""),[file,setFile]=useState<File|null>(null);
+ const [scriptPrompt,setScriptPrompt]=useState(""),[scriptCode,setScriptCode]=useState(""),[scriptBusy,setScriptBusy]=useState(false),[scriptError,setScriptError]=useState("");
  const refresh=async()=>{const d=await api("/api/chats");setChats(d.chats||[]);};
  useEffect(()=>{api("/api/auth/me").then(d=>{if(d.user){setUser(d.user);}}).catch(()=>{});},[]);
  useEffect(()=>{if(user)refresh().catch(e=>setError(e.message));},[user]);
