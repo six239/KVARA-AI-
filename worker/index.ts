@@ -14,7 +14,7 @@ const hex = (b: ArrayBuffer) => [...new Uint8Array(b)].map(x => x.toString(16).p
 async function digest(s: string) { return hex(await crypto.subtle.digest("SHA-256", bytes(s))); }
 async function passwordHash(password: string, salt: string) {
   const key = await crypto.subtle.importKey("raw", bytes(password), "PBKDF2", false, ["deriveBits"]);
-  const bits = await crypto.subtle.deriveBits({ name:"PBKDF2", salt:bytes(salt), iterations:210000, hash:"SHA-256" }, key, 256);
+  const bits = await crypto.subtle.deriveBits({ name:"PBKDF2", salt:bytes(salt), iterations:100000, hash:"SHA-256" }, key, 256);
   return hex(bits);
 }
 function cookie(req: Request, name: string) {
