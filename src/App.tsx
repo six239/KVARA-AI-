@@ -12,7 +12,12 @@ function App(){
  const refresh=async()=>{const d=await api("/api/chats");setChats(d.chats||[]);};
  useEffect(()=>{api("/api/auth/me").then(d=>{if(d.user){setUser(d.user);}}).catch(()=>{});},[]);
  useEffect(()=>{if(user)refresh().catch(e=>setError(e.message));},[user]);
- const openChat=async(id:string)=>{const d=await api("/api/chats/"+id);setChatId(id);setMessages(d.messages||[]);setTab("chat");};
+  const openChat = async (id: string) => {
+    const d = await api("/api/chats/" + id);
+    setChatId(id);
+    setMessages(d.messages || []);
+    setTab("chat");
+  };
  const renameChat=async(c:Chat)=>{const title=window.prompt("Rename this chat:",c.title);if(title===null||!title.trim())return;try{await api("/api/chats/"+c.id,{method:"PATCH",body:JSON.stringify({title:title.trim()})});await refresh();}catch(e:any){setError(e.message);}};
  const deleteChat=async(c:Chat)=>{if(!window.confirm("Delete this chat and its messages?"))return;try{await api("/api/chats/"+c.id,{method:"DELETE"});if(chatId===c.id){setChatId("");setMessages([]);}await refresh();}catch(e:any){setError(e.message);}};
  const startVoice=()=>{const w=window as any;const Speech=w.SpeechRecognition||w.webkitSpeechRecognition;if(!Speech){setError("Voice typing is not supported by this browser. Try Chrome on Android.");return;}const rec=new Speech();rec.lang=navigator.language||"en-US";rec.interimResults=true;rec.continuous=false;setListening(true);rec.onresult=(e:any)=>{const text=Array.from(e.results).map((r:any)=>r[0].transcript).join("");setPrompt(p=>p? p+" "+text:text);};rec.onerror=()=>{setListening(false);setError("Voice input failed. Check microphone permission and try again.");};rec.onend=()=>setListening(false);rec.start();};
