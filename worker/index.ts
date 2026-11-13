@@ -41,6 +41,72 @@ function contentFilterResponse() {
 }
 async function route(req: Request, env: Env): Promise<Response> {
   const url = new URL(req.url), path = url.pathname, method = req.method;
+  if (path === "/mcp" && method === "POST") {
+    const authorization = req.headers.get("Authorization") || "";
+    const bearer = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
+    if (!bearer) return json({ jsonrpc:"2.0", id:null, error:{code:-32001,message:"A KVARA MCP bearer token is required."} },401);
+    const tokenRow = await env.DB.prepare("SELECT user_id FROM mcp_tokens WHERE token_hash=?").bind(await digest(bearer)).first<{user_id:string}>();
+    if (!tokenRow) return json({ jsonrpc:"2.0", id:null, error:{code:-32001,message:"Invalid or revoked MCP token."} },401);
+    const rpc = await body(req), rpcId = rpc.id ?? null, rpcMethod = String(rpc.method || "");
+    const rpcError = (code:number,message:string) => json({jsonrpc:"2.0",id:rpcId,error:{code,message}});
+    if (rpc.jsonrpc !== "2.0" || !rpcMethod) return rpcError(-32600,"Invalid JSON-RPC request.");
+    if (rpcMethod === "notifications/initialized") return new Response(null,{status:202});
+    if (rpcMethod === "initialize") return json({jsonrpc:"2.0",id:rpcId,result:{protocolVersion:"2025-03-26",capabilities:{tools:{listChanged:false}},serverInfo:{name:"KVARA AI",version:"1.0.0"}}});
+    if (rpcMethod === "ping") return json({jsonrpc:"2.0",id:rpcId,result:{}});
+    if (rpcMethod === "tools/list") {
+      return json({jsonrpc:"2.0",id:rpcId,result:{tools:[
+        {name:"kvara_chat",description:"Ask KVARA AI a question and receive an answer.",inputSchema:{type:"object",properties:{message:{type:"string",description:"The question or task for KVARA AI."}},required:["message"]}},
+        {name:"kvara_web_search",description:"Search the web using the user's configured Tavily integration.",inputSchema:{type:"object",properties:{query:{type:"string"}},required:["query"]}},
+        {name:"kvara_list_chats",description:"List the authenticated user's KVARA AI conversations.",inputSchema:{type:"object",properties:{}}},
+        {name:"kvara_read_chat",description:"Read messages from one of the authenticated user's conversations.",inputSchema:{type:"object",properties:{chatId:{type:"string"}},required:["chatId"]}},
+        {name:"kvara_list_files",description:"List files uploaded to the authenticated user's KVARA AI workspace.",inputSchema:{type:"object",properties:{}}}
+      ]}});
+    }
+    if (rpcMethod === "tools/call") {
+      const params = rpc.params || {}, name = String(params.name || ""), args = params.arguments || {};
+      const toolText = (value:unknown) => json({jsonrpc:"2.0",id:rpcId,result:{content:[{type:"text",text:typeof value==="string"?value:JSON.stringify(value,null,2)}]}});
+      const toolError = (message:string) => json({jsonrpc:"2.0",id:rpcId,result:{isError:true,content:[{type:"text",text:message}]}});
+      try {
+        if (name === "kvara_chat") {
+          const message = String(args.message || "").slice(0,8000);
+          if (!message.trim()) return toolError("Provide a non-empty message.");
+          const result = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast",{messages:[{role:"user",content:message}],max_tokens:1400});
+          return toolText(String((result as any).response || (result as any).choices?.[0]?.message?.content || "No answer returned."));
+        }
+        if (name === "kvara_web_search") {
+          if (!env.TAVILY_API_KEY) return toolError("Web search is not configured. Add TAVILY_API_KEY to Worker secrets.");
+          const query = String(args.query || "").slice(0,400);
+          if (!query.trim()) return toolError("Provide a search query.");
+          const response = await fetch("https://api.tavily.com/search",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({api_key:env.TAVILY_API_KEY,query,search_depth:"basic",max_results:5})});
+          const result = await response.json();
+          if (!response.ok) return toolError("Web search provider returned an error.");
+          return toolText(result);
+        }
+        if (name === "kvara_list_chats") {
+          const result = await env.DB.prepare("SELECT id,title,created_at,updated_at FROM chats WHERE user_id=? ORDER BY updated_at DESC LIMIT 100").bind(tokenRow.user_id).all();
+          return toolText(result.results || []);
+        }
+        if (name === "kvara_read_chat") {
+          const chatId = String(args.chatId || "");
+          const owned = await env.DB.prepare("SELECT id,title FROM chats WHERE id=? AND user_id=?").bind(chatId,tokenRow.user_id).first<{id:string,title:string}>();
+          if (!owned) return toolError("Conversation not found.");
+          const result = await env.DB.prepare("SELECT role,content,created_at FROM messages WHERE chat_id=? ORDER BY created_at LIMIT 100").bind(chatId).all();
+          return toolText({chat:owned,messages:result.results || []});
+        }
+        if (name === "kvara_list_files") {
+          const listed = await env.FILES.list({prefix:"uploads/"+tokenRow.user_id+"/",limit:100});
+          return toolText(listed.objects.map(o=>({key:o.key,name:o.customMetadata?.name||o.key.split("/").pop(),size:o.size,uploaded:o.uploaded?.toISOString?.()||null})));
+        }
+        return rpcError(-32602,"Unknown tool name.");
+      } catch (error) {
+        console.error("KVARA MCP tool failed",name,aiErrorText(error));
+        return toolError("The requested KVARA tool failed. Check its integration settings and try again.");
+      }
+    }
+    if (rpcMethod.startsWith("notifications/")) return new Response(null,{status:202});
+    return rpcError(-32601,"Method not found.");
+  }
+  if (path === "/mcp") return json({error:"Use POST with a JSON-RPC MCP request."},405);
   if (path === "/api/health") return json({ ok:true, service:"KVARA AI" });
   if (path === "/api/auth/register" && method==="POST") {
     const b=await body(req), email=String(b.email||"").trim().toLowerCase(), password=String(b.password||"");
@@ -87,6 +153,22 @@ async function route(req: Request, env: Env): Promise<Response> {
   }
   if (path === "/api/auth/me") { const user=await auth(req,env); return json({user}); }
   const user=await auth(req,env);
+  if (path === "/api/integrations" && method === "GET") {
+    return json({cloudflareAI:true,fileStorage:true,webSearch:!!env.TAVILY_API_KEY,mcpServer:true});
+  }
+  if (path === "/api/mcp/token" && method === "GET") {
+    const row=await env.DB.prepare("SELECT created_at FROM mcp_tokens WHERE user_id=?").bind(user!.id).first<{created_at:string}>();
+    return json({configured:!!row,createdAt:row?.created_at||null});
+  }
+  if (path === "/api/mcp/token" && method === "POST") {
+    const token="kvara_mcp_"+crypto.randomUUID().replace(/-/g,"")+crypto.randomUUID().replace(/-/g,"");
+    await env.DB.prepare("INSERT INTO mcp_tokens(user_id,token_hash,created_at) VALUES(?,?,CURRENT_TIMESTAMP) ON CONFLICT(user_id) DO UPDATE SET token_hash=excluded.token_hash,created_at=CURRENT_TIMESTAMP").bind(user!.id,await digest(token)).run();
+    return json({token,configured:true});
+  }
+  if (path === "/api/mcp/token" && method === "DELETE") {
+    await env.DB.prepare("DELETE FROM mcp_tokens WHERE user_id=?").bind(user!.id).run();
+    return json({configured:false});
+  }
   if (path.startsWith("/api/") && !user) return json({error:"Please sign in first."},401);
   if (path==="/api/chats" && method==="GET") {
     const {results}=await env.DB.prepare("SELECT id,title,created_at,updated_at FROM chats WHERE user_id=? ORDER BY updated_at DESC").bind(user!.id).all();
@@ -195,22 +277,20 @@ async function route(req: Request, env: Env): Promise<Response> {
     const r=await fetch("https://api.tavily.com/search",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({api_key:env.TAVILY_API_KEY,query,search_depth:"basic",max_results:5})});
     return new Response(await r.text(),{headers:{"content-type":"application/json"}});
   }
-  if(path==="/api/video" && method==="POST") {
-    if(!env.REPLICATE_API_TOKEN || !env.REPLICATE_VIDEO_MODEL_VERSION) return json({error:"Video generation needs REPLICATE_API_TOKEN and REPLICATE_VIDEO_MODEL_VERSION secrets."},503);
-    const b=await body(req);
-    const r=await fetch("https://api.replicate.com/v1/predictions",{method:"POST",headers:{Authorization:"Bearer "+env.REPLICATE_API_TOKEN,"Content-Type":"application/json"},body:JSON.stringify({version:env.REPLICATE_VIDEO_MODEL_VERSION,input:{prompt:String(b.prompt||"").slice(0,1000)}})});
-    return new Response(await r.text(),{status:r.status,headers:{"content-type":"application/json"}});
-  }
-  if(path.startsWith("/api/video/") && method==="GET") {
-    if(!env.REPLICATE_API_TOKEN) return json({error:"Video provider is not configured."},503);
-    const r=await fetch("https://api.replicate.com/v1/predictions/"+encodeURIComponent(path.split("/").pop()!),{headers:{Authorization:"Bearer "+env.REPLICATE_API_TOKEN}});
-    return new Response(await r.text(),{status:r.status,headers:{"content-type":"application/json"}});
-  }
   return env.ASSETS.fetch(req);
 }
 export default { async fetch(req:Request,env:Env):Promise<Response> {
   const url=new URL(req.url);
   if (url.pathname.startsWith("/api/")) console.log("KVARA request", req.method, url.pathname);
+  if(url.pathname === "/mcp") {
+    const cors = new Headers({"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"Authorization, Content-Type, Accept","Access-Control-Allow-Methods":"POST, OPTIONS","Vary":"Origin"});
+    if(req.method === "OPTIONS") return new Response(null,{status:204,headers:cors});
+    let response:Response;
+    try { response=await route(req,env); }
+    catch(err) { console.error("KVARA MCP request failed",err); response=json({jsonrpc:"2.0",id:null,error:{code:-32603,message:"Internal MCP server error."}},500); }
+    const headers=new Headers(response.headers); cors.forEach((v,k)=>headers.set(k,v));
+    return new Response(response.body,{status:response.status,headers});
+  }
   if(url.pathname.startsWith("/api/")) {
     const requestOrigin=req.headers.get("Origin");
     if(requestOrigin && requestOrigin !== url.origin) return json({error:"Cross-origin requests are not allowed."},403);
