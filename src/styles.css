@@ -6,3 +6,41 @@
 @media(max-width:650px){.sidebar-handle.is-open{left:min(290px,85vw)}.sidebar-handle.is-closed{left:0}}
 
 .history-search{width:100%;min-width:0;background:#0c0913;border:1px solid #3b304d;border-radius:9px;padding:9px 10px;color:white;outline:0;font-size:12px}.history-item{display:flex;align-items:center;gap:2px;min-width:0}.history-item>button:first-child{flex:1;min-width:0}.history-action{flex:0 0 25px!important;width:25px;height:28px;justify-content:center;padding:0!important;color:#9488a7!important;font-size:15px!important}.history-action:hover{background:#38264f!important;color:white!important}.voice{position:absolute;right:58px;top:13px;border:1px solid #493b60;border-radius:10px;background:#251b35;padding:9px 11px;color:#e9e3f2}.voice:disabled{opacity:.4}.voice span{font-size:15px}
+
+/* Voice, tools, settings and MCP integration panels */
+.message-actions{grid-column:2;display:flex;align-items:center;gap:12px}
+.tool-grid,.integration-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;width:100%;text-align:left}
+.tool-card,.integration-card,.settings-group{background:#15111f;border:1px solid #3b304d;border-radius:14px;padding:16px;color:#e9e3f2}
+.tool-card{display:flex;flex-direction:column;gap:9px;text-align:left;min-height:92px}
+.tool-card span,.integration-card p,.settings-group p,.settings-group small,.integration-card small{color:#a49ab5;font-size:12px;line-height:1.6}
+.tool-card:hover{border-color:#9c79e8;background:#211832}
+.integration-card{display:flex;flex-direction:column;align-items:flex-start;gap:10px;min-width:0}
+.integration-card code{max-width:100%;overflow-wrap:anywhere;background:#0c0913;border:1px solid #352b48;border-radius:8px;padding:9px;font-size:11px;color:#cdbaff}
+.status-pill{display:inline-flex;align-items:center;border-radius:999px;padding:5px 9px;font-size:10px;font-weight:700}
+.status-pill.good{background:#18372b;color:#9ce0b8}
+.status-pill.muted{background:#332b3e;color:#c9bbdc}
+.mcp-actions,.settings-actions{display:flex;gap:8px;flex-wrap:wrap}
+.token-panel{width:100%;display:grid;gap:9px;background:#211832;border:1px solid #5b4380;border-radius:10px;padding:12px}
+.token-panel textarea{min-height:62px!important;font:11px/1.5 ui-monospace,monospace;overflow-wrap:anywhere}
+.integration-note{font-size:12px;line-height:1.6}
+.settings-page{align-items:stretch;text-align:left}
+.settings-page>.studioicon,.settings-page>h1,.settings-page>p{text-align:center;align-self:center}
+.settings-group{display:grid;gap:13px;text-align:left}
+.settings-group h3{margin:0;font:600 16px 'Space Grotesk'}
+.settings-group label{display:grid;gap:8px;color:#cfc5dc;font-size:13px}
+.settings-group select{width:100%;background:#0c0913;border:1px solid #493b60;border-radius:9px;padding:10px;color:white}
+.settings-group input[type=range]{width:100%;accent-color:#a47aff}
+.settings-group input[type=checkbox]{accent-color:#9b73eb;width:18px;height:18px}
+.settings-group .toggle-row{display:flex;align-items:center;justify-content:space-between}
+.theme-light{background:#f4f1fa;color:#21182c}
+.theme-light .sidebar{background:#fff;border-color:#ddd4e9}
+.theme-light header{background:#ffffffdd;border-color:#ddd4e9;color:#21182c}
+.theme-light .sidebar nav button,.theme-light .history button,.theme-light .account{color:#5b5069}
+.theme-light .sidebar nav button.active,.theme-light .sidebar nav button:hover,.theme-light .history button.selected{background:#eee7f8;color:#241a33}
+.theme-light .composer,.theme-light .tool-card,.theme-light .integration-card,.theme-light .settings-group,.theme-light .studio textarea{background:#fff;color:#241a33;border-color:#ddd4e9}
+.theme-light .bubble{color:#241a33}
+.theme-light .tool-card span,.theme-light .integration-card p,.theme-light .settings-group p,.theme-light .settings-group small,.theme-light .integration-card small{color:#6c6278}
+.theme-light .settings-group select{background:#fff;color:#241a33;border-color:#ddd4e9}
+.theme-light .integration-card code,.theme-light .token-panel{background:#f3eef9;color:#342744}
+.theme-light .studio h1,.theme-light .studio>p{color:#241a33}
+@media(max-width:650px){.tool-grid,.integration-grid{grid-template-columns:1fr}.settings-page{margin:4vh auto}.settings-actions,.mcp-actions{width:100%}.settings-actions button,.mcp-actions button{flex:1}}

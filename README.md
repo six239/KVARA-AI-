@@ -1,38 +1,47 @@
 # KVARA AI
 
-KVARA AI is a responsive AI workspace built with React, TypeScript, Vite, and a Cloudflare Worker backend.
+KVARA AI is a responsive AI workspace built with React, TypeScript, Vite, Cloudflare Workers AI, D1, and R2.
 
-## Included in this repository
-- Email/password registration and login with hashed passwords and secure session cookies
-- D1-backed chat history, create, load, rename-ready API, and delete-ready API
-- Real text inference through Cloudflare Workers AI
+## Features
+- Email/password registration and secure session cookies
+- AI chat with saved conversation history, rename, delete, and export
+- Browser voice input with language selection and improved final-transcript handling
+- Text-to-speech with selectable installed voices, speed control, and automatic reply reading
 - Image generation through Cloudflare Workers AI Flux
+- Roblox Luau script generation
+- Private text-file upload, listing, analysis, and deletion
 - Optional web search through Tavily
-- Optional video generation through Replicate
-- Text-to-speech using the browser speech synthesis engine
-- Responsive interface for mobile and desktop
+- Quick prompt tools for summarizing, translating, explaining, code review, brainstorming, and study help
+- Settings for theme, speech language, voice, playback speed, and chat export
+- Authenticated MCP Streamable HTTP endpoint exposing KVARA chat, web search, chat history, and file listing
 
-## Important limitations
-This is a working foundation, not a claim of complete ChatGPT feature parity. AI usage is subject to Cloudflare/provider quotas and policies. Video generation requires a separately configured provider and may cost money. Unlimited usage cannot be guaranteed. File upload/analysis, image understanding, full duplex voice, email verification, password recovery, and social login are not implemented yet.
+Video Studio and Replicate video-generation routes have been removed.
+
+## MCP connection
+1. Sign in to KVARA AI and open **MCP & Connectors**.
+2. Generate an MCP token. Copy it immediately; it is only displayed once.
+3. Configure an MCP-compatible client with the endpoint `https://kvara-global.kvaraai.workers.dev/mcp`.
+4. Use HTTP Bearer authentication with the generated token.
+5. Revoke or rotate the token from the same page if it is exposed.
+
+Available MCP tools: `kvara_chat`, `kvara_web_search`, `kvara_list_chats`, `kvara_read_chat`, and `kvara_list_files`.
+
+The MCP endpoint uses the Streamable HTTP JSON-RPC transport. Keep the bearer token private. Web search requires `TAVILY_API_KEY` in Cloudflare Worker secrets.
 
 ## Setup
 1. Install Node.js 20+.
 2. Run `npm install`.
-3. Create a Cloudflare D1 database named `kvara-ai-db` and an R2 bucket named `kvara-ai-files`.
-4. Replace `REPLACE_WITH_YOUR_D1_DATABASE_ID` in `wrangler.toml` with the D1 database ID.
-5. Apply the schema: `npx wrangler d1 migrations apply kvara-ai-db --remote`.
-6. Enable Workers AI for the Cloudflare account.
-7. Run locally with `npm run dev` for the frontend. For backend testing/deployment, use Wrangler.
-8. Build and deploy with `npm run deploy`.
+3. Create the Cloudflare D1 database and R2 bucket used by `wrangler.toml`.
+4. Apply all D1 migrations: `npx wrangler d1 migrations apply kvara-ai-db --remote`.
+5. Enable Workers AI for the Cloudflare account.
+6. Configure optional `TAVILY_API_KEY` as a Worker secret to enable web search.
+7. Build and deploy with `npm run deploy`.
 
-## Optional provider secrets
-- `TAVILY_API_KEY` enables web search.
-- `REPLICATE_API_TOKEN` and `REPLICATE_VIDEO_MODEL_VERSION` enable video prediction requests. Configure a Replicate model version that accepts a `prompt` input.
+## Limitations
+This is not a complete clone of ChatGPT. External connectors such as Gmail, Google Drive, GitHub, and Discord still require their own OAuth/API authorization and implementation. Browser speech recognition depends on device, browser, microphone permission, and language availability. AI requests are subject to provider quotas and safety policies.
 
-Set secrets with `npx wrangler secret put TAVILY_API_KEY`, `npx wrangler secret put REPLICATE_API_TOKEN`, and `npx wrangler secret put REPLICATE_VIDEO_MODEL_VERSION`.
-
-## Security notes
-- Never put provider API keys in frontend code.
-- Use HTTPS in production.
-- Configure rate limits, abuse prevention, account recovery, and privacy/retention policies before public launch.
-- The app uses cookies with HttpOnly, Secure, and SameSite=Lax attributes.
+## Security
+- Provider API keys and MCP tokens must never be placed in frontend source code.
+- MCP tokens are stored as hashes and can be revoked or rotated.
+- Use HTTPS and configure rate limits and abuse prevention before broad public launch.
+- Do not share MCP bearer tokens in screenshots, public repositories, or chats.
