@@ -107,7 +107,21 @@ async function route(req: Request, env: Env): Promise<Response> {
       await env.DB.prepare("INSERT INTO messages(id,chat_id,role,content) VALUES(?,?,?,?)").bind(id(),chatId,"assistant",answer).run();
       await env.DB.prepare("UPDATE chats SET updated_at=CURRENT_TIMESTAMP, title=CASE WHEN title='New chat' THEN ? ELSE title END WHERE id=?").bind(prompt.slice(0,48),chatId).run();
       return json({answer});
-    } catch(e) { return json({error:"AI provider error: "+String(e)},502); }
+    } catch(e) {
+      const providerError = e instanceof Error ? e.message : String(e);
+      // Cloudflare Workers AI error 8007 is a content-safety rejection.
+      // Keep the provider's safety filter enabled and return a clear, actionable response.
+      if (/\\b8007\\b|NSFW content/i.test(providerError)) {
+        console.warn("KVARA prompt blocked by AI safety filter", { chatId, userId: user!.id });
+        return json({
+          error:"The AI provider's safety filter blocked this prompt. Try rephrasing it with a clear, non-explicit description. The safety filter cannot be disabled from KVARA AI.",
+          code:"CONTENT_FILTERED",
+          retryable:false
+        },422);
+      }
+      console.error("KVARA chat generation failed", providerError);
+      return json({error:"The AI provider couldn't complete this response. Please try again in a moment.",code:"AI_PROVIDER_ERROR",retryable:true},502);
+    }
   }
   if(path==="/api/image" && method==="POST") {
     const b=await body(req), prompt=String(b.prompt||"").slice(0,1500); if(!prompt) return json({error:"Enter an image prompt."},400);
