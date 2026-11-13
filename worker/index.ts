@@ -3,8 +3,6 @@ export interface Env {
   AI: Ai;
   FILES: R2Bucket;
   ASSETS: Fetcher;
-  REPLICATE_API_TOKEN?: string;
-  REPLICATE_VIDEO_MODEL_VERSION?: string;
   TAVILY_API_KEY?: string;
 }
 type User = { id: string; email: string };
