@@ -99,10 +99,10 @@ async function route(req: Request, env: Env): Promise<Response> {
     const owned=await env.DB.prepare("SELECT id FROM chats WHERE id=? AND user_id=?").bind(chatId,user!.id).first();
     if(!owned) return json({error:"Chat not found."},404);
     await env.DB.prepare("INSERT INTO messages(id,chat_id,role,content) VALUES(?,?,?,?)").bind(id(),chatId,"user",prompt).run();
-    const {results}=await env.DB.prepare("SELECT role,content FROM messages WHERE chat_id=? ORDER BY created_at DESC LIMIT 16").bind(chatId).all<{role:string,content:string}>();
+    const {results}=await env.DB.prepare("SELECT role,content FROM messages WHERE chat_id=? ORDER BY created_at DESC LIMIT 8").bind(chatId).all<{role:string,content:string}>();
     const messages=results.reverse().map(m=>({role:m.role==="assistant"?"assistant":"user",content:m.content}));
     try {
-      const out=await env.AI.run("@cf/zai-org/glm-4.7-flash",{messages,max_tokens:1800});
+      const out=await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast",{messages,max_tokens:1800});
       const answer=String((out as any).response || (out as any).choices?.[0]?.message?.content || "I couldn't generate a response.");
       await env.DB.prepare("INSERT INTO messages(id,chat_id,role,content) VALUES(?,?,?,?)").bind(id(),chatId,"assistant",answer).run();
       await env.DB.prepare("UPDATE chats SET updated_at=CURRENT_TIMESTAMP, title=CASE WHEN title='New chat' THEN ? ELSE title END WHERE id=?").bind(prompt.slice(0,48),chatId).run();
