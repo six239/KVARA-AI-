@@ -1,6 +1,6 @@
 import React,{useEffect,useRef,useState} from "react";
 import {createRoot} from "react-dom/client";
-import {MessageCircle,Image as ImageIcon,Files,Search,LogOut,Plus,Send,Loader2,Volume2,Code2,Copy,Settings,Plug,Wrench,Download,StopCircle,KeyRound} from "lucide-react";
+import {MessageCircle,Image as ImageIcon,Files,Search,LogOut,Plus,Send,Loader2,Volume2,Video,Code2,Copy,Settings,Plug,Wrench,Download,StopCircle,KeyRound} from "lucide-react";
 import "./styles.css";
 type Chat={id:string,title:string}; type Msg={id?:string,role:"user"|"assistant",content:string};
 const api=async(path:string,opts:RequestInit={})=>{const r=await fetch(path,{...opts,credentials:"include",headers:{...(opts.body instanceof FormData?{}:{"Content-Type":"application/json"}),...(opts.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok){const details=[d.error||"Request failed",d.stage?`Stage: ${d.stage}`:"",d.diagnostic?`Details: ${d.diagnostic}`:""].filter(Boolean).join("\\n");throw new Error(details);}return d;};
@@ -55,7 +55,8 @@ function App(){
  const generateImage=async()=>{setBusy(true);setError("");try{const d=await api("/api/image",{method:"POST",body:JSON.stringify({prompt:studioPrompt})});setImageOutput(d.url);}catch(e:any){setError(e.message);}finally{setBusy(false);}};
  const logout=async()=>{stopVoice();stopSpeaking();await api("/api/auth/logout",{method:"POST",body:"{}"});setUser(null);setChats([]);setMessages([]);setChatId("");};
  if(!user)return <main className="auth"><div className="brand large">KVARA<span>AI</span></div><p>Your all-in-one AI workspace</p><form onSubmit={authSubmit}><h2>{register?"Create your account":"Welcome back"}</h2><input type="email" placeholder="Email address" value={email} onChange={e=>setEmail(e.target.value)} required/><input type="password" placeholder="Password (10+ characters)" value={password} onChange={e=>setPassword(e.target.value)} minLength={register?10:1} required/><button className="primary">{register?"Create account":"Sign in"}</button><button type="button" className="link" onClick={()=>setRegister(!register)}>{register?"Already have an account? Sign in":"New here? Create an account"}</button>{error&&<p className="error">{error}</p>}</form></main>;
- return <div className={"app "+(theme==="light"?"theme-light":"")}><aside className={sidebar?"sidebar":"sidebar hidden"}><div className="brand">KVARA<span>AI</span></div><button className="new" onClick={newChat}><Plus size={17}/> New chat</button><nav>{[[ "chat",MessageCircle,"AI Chat"],["script",Code2,"Script"],["image",ImageIcon,"Image Studio"],["files",Files,"Files"],["search",Search,"Web Search"],["tools",Wrench,"Tools"],["integrations",Plug,"MCP & Connectors"],["settings",Settings,"Settings"]].map(([key,Icon,label]:any)=><button key={key} className={tab===key?"active":""} onClick={()=>setTab(key)}><Icon size={17}/>{label}</button>)}</nav><div className="history"><small>RECENT CHATS</small><input className="history-search" value={historyQuery} onChange={e=>setHistoryQuery(e.target.value)} placeholder="Search chats…"/>{chats.filter(c=>c.title.toLowerCase().includes(historyQuery.toLowerCase())).map(c=><div className="history-item" key={c.id}><button className={chatId===c.id?"selected":""} onClick={()=>openChat(c.id)}>{c.title}</button><button className="history-action" title="Rename chat" onClick={()=>renameChat(c)}>✎</button><button className="history-action" title="Delete chat" onClick={()=>deleteChat(c)}>×</button></div>)}</div><button className="account" onClick={logout}><LogOut size={16}/> {user.email} · Sign out</button></aside><button type="button" className={`sidebar-handle ${sidebar?"is-open":"is-closed"}`} onClick={()=>setSidebar(!sidebar)} aria-label={sidebar?"Close sidebar":"Open sidebar"}>{sidebar?"‹":"›"}</button><main className="main"><header><b>{({chat:"AI Chat",script:"Roblox Luau Script Studio",image:"Image Studio",files:"Files",search:"Web Search",tools:"Tools",integrations:"MCP & Connectors",settings:"Settings"} as any)[tab]}</b><span className="spacer"/><span className="online">● Online</span></header>{error&&<div className="notice">{error}<button onClick={()=>setError("")}>×</button></div>}
+ return <div className={"app "+(theme==="light"?"theme-light":"")}><aside className={sidebar?"sidebar":"sidebar hidden"}><div className="brand">KVARA<span>AI</span></div><button className="new" onClick={newChat}><Plus size={17}/> New chat</button><nav>{[[ "chat",MessageCircle,"AI Chat"],["video",Video,"Video Studio"],["script",Code2,"Script"],["image",ImageIcon,"Image Studio"],["files",Files,"Files"],["search",Search,"Web Search"],["tools",Wrench,"Tools"],["integrations",Plug,"MCP & Connectors"],["settings",Settings,"Settings"]].map(([key,Icon,label]:any)=><button key={key} className={tab===key?"active":""} onClick={()=>setTab(key)}><Icon size={17}/>{label}</button>)}</nav><div className="history"><small>RECENT CHATS</small><input className="history-search" value={historyQuery} onChange={e=>setHistoryQuery(e.target.value)} placeholder="Search chats…"/>{chats.filter(c=>c.title.toLowerCase().includes(historyQuery.toLowerCase())).map(c=><div className="history-item" key={c.id}><button className={chatId===c.id?"selected":""} onClick={()=>openChat(c.id)}>{c.title}</button><button className="history-action" title="Rename chat" onClick={()=>renameChat(c)}>✎</button><button className="history-action" title="Delete chat" onClick={()=>deleteChat(c)}>×</button></div>)}</div><button className="account" onClick={logout}><LogOut size={16}/> {user.email} · Sign out</button></aside><button type="button" className={`sidebar-handle ${sidebar?"is-open":"is-closed"}`} onClick={()=>setSidebar(!sidebar)} aria-label={sidebar?"Close sidebar":"Open sidebar"}>{sidebar?"‹":"›"}</button><main className="main"><header><b>{({chat:"AI Chat",video:"Video Studio",script:"Roblox Luau Script Studio",image:"Image Studio",files:"Files",search:"Web Search",tools:"Tools",integrations:"MCP & Connectors",settings:"Settings"} as any)[tab]}</b><span className="spacer"/><span className="online">● Online</span></header>{error&&<div className="notice">{error}<button onClick={()=>setError("")}>×</button></div>}
+ {tab==="video"&&<VideoStudio/>}
  {tab==="chat"&&<section className="chatview"><div className="messages">{messages.length===0?<div className="welcome"><div className="orb">✦</div><h1>What can I help you with?</h1><p>Ask questions, solve problems, write code, or explore ideas.</p><div className="suggestions">{["Solve a math problem step by step","Help me write a Roblox Luau script","Explain a difficult topic simply"].map(s=><button onClick={()=>setPrompt(s)}>{s}</button>)}</div></div>:messages.map((m,i)=><article className={"message "+m.role} key={i}><div className="avatar">{m.role==="user"?"You":"✦"}</div><div className="bubble">{m.content}</div>{m.role==="assistant"&&<div className="message-actions"><button className="tiny" onClick={()=>speakText(m.content)}><Volume2 size={14}/> Listen</button><button className="tiny" onClick={()=>navigator.clipboard?.writeText(m.content)}><Copy size={14}/> Copy</button></div>}</article>)}{busy&&<div className="thinking"><Loader2 className="spin"/> KVARA AI is thinking…</div>}</div><div className="composer"><textarea value={prompt} onChange={e=>setPrompt(e.target.value)} onKeyDown={e=>{if(enterToSend&&e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}} placeholder="Message KVARA AI…" rows={2}/><button className="voice" title={listening?"Stop listening":"Dictate message"} onClick={startVoice} disabled={busy}><span>{listening?"■":"🎙"}</span></button><button className="send" onClick={send} disabled={busy||!prompt.trim()}><Send size={18}/></button><small>AI can make mistakes. Check important information.</small></div></section>}
  {tab==="script"&&<section className="studio script-studio"><div className="studioicon"><Code2/></div><h1>Roblox Luau Script Studio</h1><p>Describe the Roblox Studio script you want to build. KVARA AI will generate Luau code and setup notes.</p><textarea value={scriptPrompt} onChange={e=>setScriptPrompt(e.target.value)} placeholder="Example: Create a sprint system with a stamina bar, mobile support, and server validation…"/><button className="primary" disabled={scriptBusy||!scriptPrompt.trim()} onClick={generateScript}>{scriptBusy?<><Loader2 className="spin"/> Generating…</>:"Generate Luau script"}</button>{scriptError&&<p className="error">{scriptError}</p>}{scriptCode&&<div className="script-output"><div className="script-output-head"><b>Generated script</b><button className="copy-script" onClick={()=>navigator.clipboard?.writeText(scriptCode)}><Copy size={15}/> Copy</button></div><pre>{scriptCode}</pre></div>}</section>}
  {tab==="image"&&<section className="studio"><div className="studioicon"><ImageIcon/></div><h1>Create an image</h1><p>Describe the image you want KVARA AI to create.</p><textarea value={studioPrompt} onChange={e=>setStudioPrompt(e.target.value)} placeholder="Describe your creation…"/><button className="primary" disabled={busy||!studioPrompt.trim()} onClick={generateImage}>{busy?<Loader2 className="spin"/>:"Generate image"}</button>{imageOutput&&<div className="output"><img src={imageOutput} alt="Generated artwork"/></div>}</section>}
@@ -89,3 +90,115 @@ function App(){
 }
 function SearchView(){const [q,setQ]=useState(""),[data,setData]=useState<any>(null),[err,setErr]=useState("");const run=async()=>{try{setErr("");const d=await api("/api/search",{method:"POST",body:JSON.stringify({query:q})});setData(d);}catch(e:any){setErr(e.message);}};return <section className="studio"><Search size={34}/><h1>Web Search</h1><p>Search the web for current information. Requires a Tavily API key in Worker secrets.</p><div className="searchrow"><input value={q} onChange={e=>setQ(e.target.value)} placeholder="What do you want to research?"/><button className="primary" onClick={run}>Search</button></div>{err&&<p className="error">{err}</p>}{data?.results?.map((r:any)=><article className="result"><a href={r.url} target="_blank" rel="noreferrer">{r.title}</a><p>{r.content}</p></article>)}</section>}
 createRoot(document.getElementById("root")!).render(<App/>);
+
+function VideoStudio(){
+ const [mode,setMode]=useState<"text"|"image">("text");
+ const [prompt,setPrompt]=useState("");
+ const [sourceFile,setSourceFile]=useState<File|null>(null);
+ const [duration,setDuration]=useState(8);
+ const [busy,setBusy]=useState(false);
+ const [progress,setProgress]=useState(0);
+ const [status,setStatus]=useState("");
+ const [error,setError]=useState("");
+ const [videoUrl,setVideoUrl]=useState("");
+ const [videoType,setVideoType]=useState("");
+ const canvasRef=useRef<HTMLCanvasElement|null>(null);
+ useEffect(()=>()=>{if(videoUrl)URL.revokeObjectURL(videoUrl);},[videoUrl]);
+ const loadImage=(src:string)=>new Promise<HTMLImageElement>((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=()=>reject(new Error("An image could not be loaded."));img.src=src;});
+ const renderVideo=async(images:HTMLImageElement[],caption:string)=>{
+  const canvas=canvasRef.current;
+  if(!canvas)throw new Error("The video renderer is unavailable. Reload the page and try again.");
+  const width=1280,height=720;canvas.width=width;canvas.height=height;
+  const ctx=canvas.getContext("2d");if(!ctx)throw new Error("Your browser does not support canvas video rendering.");
+  if(typeof MediaRecorder==="undefined"||typeof canvas.captureStream!=="function")throw new Error("Video export is not supported in this browser. Try the latest Chrome on Android.");
+  const mime=["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"].find(t=>MediaRecorder.isTypeSupported(t));
+  if(!mime)throw new Error("This browser cannot export WebM video.");
+  const stream=canvas.captureStream(30);
+  const recorder=new MediaRecorder(stream,{mimeType:mime});
+  const chunks:BlobPart[]=[];
+  const completed=new Promise<Blob>((resolve,reject)=>{recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};recorder.onerror=()=>reject(new Error("The browser failed while recording the video."));recorder.onstop=()=>resolve(new Blob(chunks,{type:mime}));});
+  const paint=(img:HTMLImageElement,p:number,alpha:number)=>{
+   ctx.save();ctx.globalAlpha=alpha;
+   const scale=Math.max(width/img.width,height/img.height)*(1.035+0.12*p);
+   const dw=img.width*scale,dh=img.height*scale,drift=(p-.5)*26;
+   ctx.drawImage(img,(width-dw)/2+drift,(height-dh)/2-drift/2,dw,dh);
+   ctx.restore();
+  };
+  const draw=(elapsed:number)=>{
+   ctx.fillStyle="#080611";ctx.fillRect(0,0,width,height);
+   const segment=duration*1000/images.length;
+   const index=Math.min(images.length-1,Math.floor(elapsed/segment));
+   const local=Math.min(1,(elapsed-index*segment)/segment);
+   paint(images[index],local,1);
+   const remaining=segment-(elapsed%segment);
+   if(images.length>1&&remaining<650){const next=images[(index+1)%images.length];paint(next,0,Math.max(0,1-remaining/650));}
+   const gradient=ctx.createLinearGradient(0,height-150,0,height);gradient.addColorStop(0,"rgba(0,0,0,0)");gradient.addColorStop(1,"rgba(0,0,0,0.76)");
+   ctx.fillStyle=gradient;ctx.fillRect(0,height-150,width,150);
+   ctx.fillStyle="#ffffff";ctx.font="600 30px Arial";ctx.textAlign="left";ctx.fillText("KVARA AI",48,height-58);
+   ctx.font="22px Arial";ctx.fillStyle="rgba(255,255,255,.82)";
+   const label=caption.length>76?caption.slice(0,73)+"...":caption;
+   ctx.fillText(label,48,height-24);
+  };
+  recorder.start(250);
+  const start=performance.now();
+  await new Promise<void>(resolve=>{
+   const tick=(now:number)=>{
+    const elapsed=Math.min(duration*1000,now-start);
+    draw(elapsed);
+    const pct=Math.min(100,Math.round(elapsed/(duration*1000)*100));
+    setProgress(pct);
+    if(elapsed>=duration*1000){recorder.stop();resolve();}
+    else requestAnimationFrame(tick);
+   };
+   requestAnimationFrame(tick);
+  });
+  const blob=await completed;
+  stream.getTracks().forEach(track=>track.stop());
+  if(!blob.size)throw new Error("The browser exported an empty video. Try a shorter duration.");
+  return {blob,mime};
+ };
+ const create=async()=>{
+  if(busy)return;
+  if(mode==="text"&&!prompt.trim()){setError("Describe the video first.");return;}
+  if(mode==="image"&&!sourceFile){setError("Choose an image to animate.");return;}
+  if(sourceFile&&sourceFile.size>10*1024*1024){setError("Choose an image smaller than 10 MB.");return;}
+  setBusy(true);setProgress(0);setError("");setVideoUrl("");setStatus("Preparing scenes...");
+  let temporaryUrl="";
+  try{
+   let images:HTMLImageElement[]=[];
+   if(mode==="text"){
+    const shots=["wide establishing shot","medium shot with a different camera angle","close-up detail shot"];
+    for(let i=0;i<shots.length;i++){
+     setStatus("Generating AI scene "+(i+1)+" of "+shots.length+"...");
+     const result=await api("/api/image",{method:"POST",body:JSON.stringify({prompt:prompt.trim()+". Cinematic storyboard frame "+(i+1)+" of 3, "+shots[i]+". Keep the same main subject, environment, color palette and visual style. No captions or text."})});
+     if(!result.url)throw new Error("The image model did not return scene "+(i+1)+".");
+     images.push(await loadImage(result.url));
+    }
+   }else{
+    temporaryUrl=URL.createObjectURL(sourceFile!);
+    images=[await loadImage(temporaryUrl)];
+   }
+   setStatus("Rendering video on this device...");
+   const result=await renderVideo(images,prompt.trim()||sourceFile?.name||"Image animation");
+   const url=URL.createObjectURL(result.blob);
+   setVideoType(result.mime);setVideoUrl(url);setProgress(100);setStatus("Video ready");
+  }catch(e:any){setError(e.message||"Video generation failed.");setStatus("");}
+  finally{if(temporaryUrl)URL.revokeObjectURL(temporaryUrl);setBusy(false);}
+ };
+ const download=()=>{if(!videoUrl)return;const a=document.createElement("a");a.href=videoUrl;a.download="kvara-ai-video.webm";document.body.appendChild(a);a.click();a.remove();};
+ return <section className="studio video-studio">
+  <div className="studioicon"><Video/></div>
+  <h1>KVARA AI Video Engine</h1>
+  <p>Create a short animated video without a paid video-generation API. Text mode creates AI storyboard images; image mode adds cinematic camera motion to your image.</p>
+  <div className="video-mode"><button className={mode==="text"?"selected":""} onClick={()=>{setMode("text");setError("");}} disabled={busy}>Text to video</button><button className={mode==="image"?"selected":""} onClick={()=>{setMode("image");setError("");}} disabled={busy}>Image to video</button></div>
+  {mode==="text"?<textarea value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder="Describe a scene, character, setting, and camera style..."/>:<div className="video-upload"><label>Choose an image to animate<input type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>setSourceFile(e.target.files?.[0]||null)} disabled={busy}/></label>{sourceFile&&<small>{sourceFile.name} · {(sourceFile.size/1024/1024).toFixed(2)} MB</small>}</div>}
+  <label className="video-duration">Video duration <b>{duration} seconds</b><input type="range" min="4" max="12" step="2" value={duration} onChange={e=>setDuration(Number(e.target.value))} disabled={busy}/></label>
+  <button className="primary video-create" onClick={create} disabled={busy|| (mode==="text"?!prompt.trim():!sourceFile)}>{busy?<><Loader2 className="spin"/> {status||"Working..."}</>:"Create video"}</button>
+  {busy&&<div className="video-progress"><div><span>{status}</span><b>{progress}%</b></div><div className="video-progress-track"><i style={{width:progress+"%"}}/></div></div>}
+  {error&&<p className="error">{error}</p>}
+  {videoUrl&&<div className="video-result"><video src={videoUrl} controls playsInline/><div className="video-result-actions"><span>{videoType.replace("video/","").toUpperCase()} · {duration}s</span><button className="primary" onClick={download}><Download size={16}/> Download video</button></div></div>}
+  <canvas ref={canvasRef} className="video-render-canvas"/>
+  <small className="video-disclaimer">This free-mode engine animates AI-generated still scenes or uploaded images. It does not synthesize new motion between frames like a dedicated video diffusion model. Text mode uses your existing Cloudflare image-generation allowance.</small>
+ </section>;
+}
+
