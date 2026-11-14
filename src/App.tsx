@@ -108,12 +108,12 @@ function VideoStudio(){
  const renderVideo=async(images:HTMLImageElement[],caption:string)=>{
   const canvas=canvasRef.current;
   if(!canvas)throw new Error("The video renderer is unavailable. Reload the page and try again.");
-  const width=1280,height=720;canvas.width=width;canvas.height=height;
+  const width=854,height=480;canvas.width=width;canvas.height=height;
   const ctx=canvas.getContext("2d");if(!ctx)throw new Error("Your browser does not support canvas video rendering.");
   if(typeof MediaRecorder==="undefined"||typeof canvas.captureStream!=="function")throw new Error("Video export is not supported in this browser. Try the latest Chrome on Android.");
   const mime=["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"].find(t=>MediaRecorder.isTypeSupported(t));
   if(!mime)throw new Error("This browser cannot export WebM video.");
-  const stream=canvas.captureStream(30);
+  const stream=canvas.captureStream(24);
   const recorder=new MediaRecorder(stream,{mimeType:mime});
   const chunks:BlobPart[]=[];
   const completed=new Promise<Blob>((resolve,reject)=>{recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};recorder.onerror=()=>reject(new Error("The browser failed while recording the video."));recorder.onstop=()=>resolve(new Blob(chunks,{type:mime}));});
@@ -145,7 +145,7 @@ function VideoStudio(){
    const tick=(now:number)=>{
     const elapsed=Math.min(duration*1000,now-start);
     draw(elapsed);
-    const pct=Math.min(100,Math.round(elapsed/(duration*1000)*100));
+    const pct=Math.min(100,25+Math.round(elapsed/(duration*1000)*75));
     setProgress(pct);
     if(elapsed>=duration*1000){recorder.stop();resolve();}
     else requestAnimationFrame(tick);
@@ -168,12 +168,19 @@ function VideoStudio(){
    let images:HTMLImageElement[]=[];
    if(mode==="text"){
     const shots=["wide establishing shot","medium shot with a different camera angle","close-up detail shot"];
-    for(let i=0;i<shots.length;i++){
-     setStatus("Generating AI scene "+(i+1)+" of "+shots.length+"...");
-     const result=await api("/api/image",{method:"POST",body:JSON.stringify({prompt:prompt.trim()+". Cinematic storyboard frame "+(i+1)+" of 3, "+shots[i]+". Keep the same main subject, environment, color palette and visual style. No captions or text."})});
+    setStatus("Generating 3 AI scenes in parallel...");
+    setProgress(5);
+    let completed=0;
+    const generated=await Promise.all(shots.map(async(shot,i)=>{
+     const result=await api("/api/image",{method:"POST",body:JSON.stringify({prompt:prompt.trim()+". Cinematic storyboard frame "+(i+1)+" of 3, "+shot+". Keep the same main subject, environment, color palette and visual style. No captions or text."})});
      if(!result.url)throw new Error("The image model did not return scene "+(i+1)+".");
-     images.push(await loadImage(result.url));
-    }
+     const image=await loadImage(result.url);
+     completed++;
+     setStatus("Loading AI scenes ("+completed+" of "+shots.length+")...");
+     setProgress(5+completed*7);
+     return image;
+    }));
+    images=generated;
    }else{
     temporaryUrl=URL.createObjectURL(sourceFile!);
     images=[await loadImage(temporaryUrl)];
