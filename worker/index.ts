@@ -216,8 +216,11 @@ async function route(req: Request, env: Env): Promise<Response> {
   }
   if(path==="/api/image" && method==="POST") {
     const b=await body(req), prompt=String(b.prompt||"").slice(0,1500); if(!prompt) return json({error:"Enter an image prompt."},400);
+    const allowedSizes=[[1024,1024],[1152,896],[896,1152],[1280,720],[720,1280]];
+    const requestedWidth=Number(b.width)||1024, requestedHeight=Number(b.height)||1024;
+    const size=allowedSizes.find(([w,h])=>w===requestedWidth&&h===requestedHeight)||allowedSizes[0];
     try {
-      const result=await env.AI.run("@cf/black-forest-labs/flux-1-schnell",{prompt});
+      const result=await env.AI.run("@cf/black-forest-labs/flux-1-schnell",{prompt,width:size[0],height:size[1]});
       const data=(result as any).image; if(!data) return json({error:"Image provider returned no image."},502);
       const key="generated/"+user!.id+"/"+id()+".png";
       await env.FILES.put(key,Uint8Array.from(atob(data),c=>c.charCodeAt(0)),{httpMetadata:{contentType:"image/png"}});
