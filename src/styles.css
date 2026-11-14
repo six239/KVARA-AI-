@@ -80,3 +80,72 @@
 .theme-light .video-mode button{color:#5b5069}
 .theme-light .video-mode button.selected{background:#eee7f8;color:#241a33}
 @media(max-width:650px){.video-studio{margin:3vh auto}.video-result-actions{align-items:stretch}.video-result-actions .primary{width:100%;justify-content:center}}
+
+/* Compact UI density update */
+:root{font-size:14px}
+.sidebar{width:235px;padding:16px 12px;gap:12px}
+.brand{font-size:20px}
+.new,.primary{padding:9px 12px;border-radius:10px;gap:7px}
+.sidebar nav{gap:3px}
+.sidebar nav button,.history button,.account{padding:7px 8px;gap:8px;font-size:12px}
+.history small{font-size:9px;padding:6px}
+.history button{font-size:11px}
+header{height:52px;flex-shrink:0;padding:0 16px;gap:10px;font-size:13px}
+.messages{padding:22px 20px}
+.welcome{max-width:520px}
+.orb,.studioicon{width:46px;height:46px;border-radius:15px;font-size:24px}
+.welcome h1,.studio h1{font-size:25px;margin:16px 0 6px}
+.welcome p,.studio>p{font-size:13px}
+.suggestions{gap:7px;margin-top:20px}
+.suggestions button{padding:9px;font-size:11px}
+.composer{margin:8px 20px 16px;padding:9px 54px 22px 12px;border-radius:14px}
+.composer textarea,.studio textarea{min-height:46px;font-size:13px}
+.composer small{font-size:9px}
+.send{right:9px;top:9px;padding:8px}
+.voice{right:50px;top:9px;padding:7px 9px}
+.message{grid-template-columns:28px 1fr;gap:9px;margin:15px 0}
+.avatar{width:27px;height:27px;border-radius:8px}
+.bubble{font-size:13px;line-height:1.55}
+.studio{width:min(650px,calc(100% - 32px));margin:5vh auto;gap:11px}
+.studio textarea{padding:12px;min-height:100px;border-radius:12px}
+.studio .primary{min-width:145px}
+.auth form{width:min(360px,100%);gap:10px;padding:20px}
+.auth input,.searchrow input{padding:10px}
+.notice{margin:9px 14px 0;padding:8px 10px;font-size:12px}
+.result{padding:12px;margin-top:9px}
+.script-studio{width:min(820px,calc(100% - 28px));margin:3vh auto}
+.script-studio textarea{min-height:100px}
+.script-output pre{padding:13px;font-size:12px}
+.sidebar-handle{left:235px;width:21px;height:62px;font-size:23px}
+.history-search{padding:7px 8px;font-size:11px}
+.history-action{flex-basis:22px!important;width:22px;height:24px}
+.tool-grid,.integration-grid{gap:9px}
+.tool-card,.integration-card,.settings-group{padding:13px;border-radius:12px}
+.tool-card{min-height:78px;gap:7px}
+.settings-group{gap:10px}
+.settings-group h3{font-size:14px}
+.settings-group label{font-size:12px}
+.token-panel{padding:10px}
+.video-studio{width:min(740px,calc(100% - 28px));margin:3vh auto;gap:12px}
+.video-studio>textarea{min-height:105px;padding:12px;border-radius:12px;font-size:13px}
+.video-mode button{padding:9px;font-size:12px}
+.video-upload{padding:14px}
+.video-upload label,.video-duration{font-size:12px}
+.video-progress{padding:10px}
+.video-result{padding:9px;gap:9px}
+.video-result video{max-height:360px}
+@media(max-width:650px){
+ .sidebar{width:min(260px,82vw);padding:14px 11px}
+ .sidebar-handle.is-open{left:min(260px,82vw)}
+ .messages{padding:15px 12px}
+ .composer{margin:7px 9px calc(6px + env(safe-area-inset-bottom));padding:8px 52px calc(24px + env(safe-area-inset-bottom)) 10px}
+ .composer textarea{min-height:52px;font-size:13px}
+ .welcome{margin-top:5vh}
+ .welcome h1,.studio h1{font-size:21px}
+ .suggestions{gap:6px}
+ .suggestions button{padding:8px;font-size:10px}
+ .studio{width:calc(100% - 24px);margin:3vh auto;gap:10px}
+ .video-studio{width:calc(100% - 24px);margin:2vh auto;gap:10px}
+ .video-result video{max-height:260px}
+ .tool-grid,.integration-grid{grid-template-columns:1fr}
+}
