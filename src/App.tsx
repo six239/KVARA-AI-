@@ -108,19 +108,29 @@ function VideoStudio(){
  const renderVideo=async(images:HTMLImageElement[],caption:string)=>{
   const canvas=canvasRef.current;
   if(!canvas)throw new Error("The video renderer is unavailable. Reload the page and try again.");
-  const width=854,height=480;canvas.width=width;canvas.height=height;
-  const ctx=canvas.getContext("2d");if(!ctx)throw new Error("Your browser does not support canvas video rendering.");
+  // Keep mobile rendering lightweight so Android does not stall while drawing.
+  const width=640,height=360,fps=12;
+  canvas.width=width;canvas.height=height;
+  const ctx=canvas.getContext("2d",{alpha:false});
+  if(!ctx)throw new Error("Your browser does not support canvas video rendering.");
   if(typeof MediaRecorder==="undefined"||typeof canvas.captureStream!=="function")throw new Error("Video export is not supported in this browser. Try the latest Chrome on Android.");
-  const mime=["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"].find(t=>MediaRecorder.isTypeSupported(t));
+  const mime=["video/webm;codecs=vp8","video/webm;codecs=vp9","video/webm"].find(t=>MediaRecorder.isTypeSupported(t));
   if(!mime)throw new Error("This browser cannot export WebM video.");
-  const stream=canvas.captureStream(24);
-  const recorder=new MediaRecorder(stream,{mimeType:mime});
+  const stream=canvas.captureStream(fps);
+  let recorder:MediaRecorder;
+  try{recorder=new MediaRecorder(stream,{mimeType:mime});}
+  catch{stream.getTracks().forEach(t=>t.stop());throw new Error("Android could not start the video recorder. Update Chrome and try again.");}
   const chunks:BlobPart[]=[];
-  const completed=new Promise<Blob>((resolve,reject)=>{recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};recorder.onerror=()=>reject(new Error("The browser failed while recording the video."));recorder.onstop=()=>resolve(new Blob(chunks,{type:mime}));});
+  let recorderError:Error|null=null;
+  const completed=new Promise<Blob>((resolve,reject)=>{
+   recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
+   recorder.onerror=()=>{recorderError=new Error("The browser failed while recording the video.");};
+   recorder.onstop=()=>recorderError?reject(recorderError):resolve(new Blob(chunks,{type:mime}));
+  });
   const paint=(img:HTMLImageElement,p:number,alpha:number)=>{
    ctx.save();ctx.globalAlpha=alpha;
-   const scale=Math.max(width/img.width,height/img.height)*(1.035+0.12*p);
-   const dw=img.width*scale,dh=img.height*scale,drift=(p-.5)*26;
+   const scale=Math.max(width/img.width,height/img.height)*(1.025+0.10*p);
+   const dw=img.width*scale,dh=img.height*scale,drift=(p-.5)*18;
    ctx.drawImage(img,(width-dw)/2+drift,(height-dh)/2-drift/2,dw,dh);
    ctx.restore();
   };
@@ -131,35 +141,46 @@ function VideoStudio(){
    const local=Math.min(1,(elapsed-index*segment)/segment);
    paint(images[index],local,1);
    const remaining=segment-(elapsed%segment);
-   if(images.length>1&&remaining<650){const next=images[(index+1)%images.length];paint(next,0,Math.max(0,1-remaining/650));}
-   const gradient=ctx.createLinearGradient(0,height-150,0,height);gradient.addColorStop(0,"rgba(0,0,0,0)");gradient.addColorStop(1,"rgba(0,0,0,0.76)");
-   ctx.fillStyle=gradient;ctx.fillRect(0,height-150,width,150);
-   ctx.fillStyle="#ffffff";ctx.font="600 30px Arial";ctx.textAlign="left";ctx.fillText("KVARA AI",48,height-58);
-   ctx.font="22px Arial";ctx.fillStyle="rgba(255,255,255,.82)";
-   const label=caption.length>76?caption.slice(0,73)+"...":caption;
-   ctx.fillText(label,48,height-24);
+   if(images.length>1&&remaining<550)paint(images[(index+1)%images.length],0,Math.max(0,1-remaining/550));
+   const gradient=ctx.createLinearGradient(0,height-110,0,height);
+   gradient.addColorStop(0,"rgba(0,0,0,0)");gradient.addColorStop(1,"rgba(0,0,0,.78)");
+   ctx.fillStyle=gradient;ctx.fillRect(0,height-110,width,110);
+   ctx.fillStyle="#fff";ctx.font="600 22px Arial";ctx.textAlign="left";ctx.fillText("KVARA AI",30,height-42);
+   ctx.font="15px Arial";ctx.fillStyle="rgba(255,255,255,.85)";
+   const label=caption.length>68?caption.slice(0,65)+"...":caption;
+   ctx.fillText(label,30,height-18);
   };
-  recorder.start(250);
-  const start=performance.now();
-  await new Promise<void>((resolve,reject)=>{
-   let stopped=false;
-   const finish=()=>{if(stopped)return;stopped=true;clearInterval(timer);try{if(recorder.state!=="inactive")recorder.stop();}catch(e){reject(e);}resolve();};
-   const timer=window.setInterval(()=>{
-    try{
-     const elapsed=Math.min(duration*1000,performance.now()-start);
-     draw(elapsed);
-     const pct=Math.min(100,25+Math.round(elapsed/(duration*1000)*75));
-     setProgress(pct);
-     if(elapsed>=duration*1000)finish();
-    }catch(e){if(!stopped){stopped=true;clearInterval(timer);try{if(recorder.state!=="inactive")recorder.stop();}catch{}reject(e);}}
-   },1000/24);
+  let interval=0,watchdog=0;
+  try{
    draw(0);
-   window.setTimeout(()=>{if(!stopped){stopped=true;clearInterval(timer);try{if(recorder.state!=="inactive")recorder.stop();}catch{}reject(new Error("Video rendering timed out. Keep KVARA AI open and try a shorter 4-second video."));}},duration*1000+20000);
-  });
-  const blob=await completed;
-  stream.getTracks().forEach(track=>track.stop());
-  if(!blob.size)throw new Error("The browser exported an empty video. Try a shorter duration.");
-  return {blob,mime};
+   recorder.start(500);
+   const start=performance.now();
+   await new Promise<void>((resolve,reject)=>{
+    let stopped=false;
+    const stop=(err?:Error)=>{
+     if(stopped)return;stopped=true;
+     window.clearInterval(interval);window.clearTimeout(watchdog);
+     try{if(recorder.state!=="inactive")recorder.stop();}catch(e){reject(e);return;}
+     if(err)reject(err);else resolve();
+    };
+    interval=window.setInterval(()=>{
+     try{
+      const elapsed=Math.min(duration*1000,performance.now()-start);
+      draw(elapsed);
+      setProgress(Math.min(99,27+Math.floor(elapsed/(duration*1000)*72)));
+      if(elapsed>=duration*1000)stop();
+     }catch(e){stop(e instanceof Error?e:new Error("Video rendering failed."));}
+    },1000/fps);
+    watchdog=window.setTimeout(()=>stop(new Error("Video rendering timed out. Keep this page open and try a shorter video.")),duration*1000+25000);
+   });
+   const blob=await completed;
+   if(!blob.size)throw new Error("The browser exported an empty video. Try a shorter duration.");
+   return {blob,mime};
+  }finally{
+   window.clearInterval(interval);window.clearTimeout(watchdog);
+   if(recorder.state!=="inactive"){try{recorder.stop();}catch{}}
+   stream.getTracks().forEach(track=>track.stop());
+  }
  };
  const create=async()=>{
   if(busy)return;
