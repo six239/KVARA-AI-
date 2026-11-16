@@ -141,16 +141,20 @@ function VideoStudio(){
   };
   recorder.start(250);
   const start=performance.now();
-  await new Promise<void>(resolve=>{
-   const tick=(now:number)=>{
-    const elapsed=Math.min(duration*1000,now-start);
-    draw(elapsed);
-    const pct=Math.min(100,25+Math.round(elapsed/(duration*1000)*75));
-    setProgress(pct);
-    if(elapsed>=duration*1000){recorder.stop();resolve();}
-    else requestAnimationFrame(tick);
-   };
-   requestAnimationFrame(tick);
+  await new Promise<void>((resolve,reject)=>{
+   let stopped=false;
+   const finish=()=>{if(stopped)return;stopped=true;clearInterval(timer);try{if(recorder.state!=="inactive")recorder.stop();}catch(e){reject(e);}resolve();};
+   const timer=window.setInterval(()=>{
+    try{
+     const elapsed=Math.min(duration*1000,performance.now()-start);
+     draw(elapsed);
+     const pct=Math.min(100,25+Math.round(elapsed/(duration*1000)*75));
+     setProgress(pct);
+     if(elapsed>=duration*1000)finish();
+    }catch(e){if(!stopped){stopped=true;clearInterval(timer);try{if(recorder.state!=="inactive")recorder.stop();}catch{}reject(e);}}
+   },1000/24);
+   draw(0);
+   window.setTimeout(()=>{if(!stopped){stopped=true;clearInterval(timer);try{if(recorder.state!=="inactive")recorder.stop();}catch{}reject(new Error("Video rendering timed out. Keep KVARA AI open and try a shorter 4-second video."));}},duration*1000+20000);
   });
   const blob=await completed;
   stream.getTracks().forEach(track=>track.stop());
