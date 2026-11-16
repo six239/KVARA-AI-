@@ -168,3 +168,12 @@ header{height:52px;flex-shrink:0;padding:0 16px;gap:10px;font-size:13px}
 .image-history-grid button{padding:0;border:1px solid var(--border,#333);border-radius:10px;overflow:hidden;background:transparent;aspect-ratio:1;cursor:pointer}
 .image-history-grid img{width:100%;height:100%;object-fit:cover;display:block}
 @media(max-width:600px){.image-controls{grid-template-columns:1fr}.image-history-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* Customize / personality controls */
+.customize-connection{display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center;padding:12px 0;border-top:1px solid #3b304d}
+.customize-connection small{grid-column:1/-1}
+.customize-connection .copy-script{grid-column:1/-1;justify-self:start}
+.settings-group input[type=range]{accent-color:#10b9a5}
+.settings-group input[type=checkbox]{accent-color:#10b9a5}
+.theme-light .customize-connection{border-color:#ddd4e9}
+@media(max-width:650px){.customize-connection{grid-template-columns:1fr auto}}
